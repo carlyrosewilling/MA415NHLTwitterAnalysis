@@ -1,0 +1,589 @@
+---
+title: "Content Analysis of Tweets Using NHL Team Specific Hashtags"
+author: "Carly Rose Willing"
+date: "18 December 2017"
+output:
+  pdf_document:
+    highlight: haddock
+    number_sections: yes
+  html_document: default
+geometry: margin =1.0in
+header-includes:
+- \usepackage{placeins}
+- \usepackage{multicol}
+fontsize: 12pt
+abstract: ''
+---
+
+```{r setup, include=FALSE, echo=FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, fig.post="h!", fig.align = "center",
+                      message = FALSE)
+
+#Commented code is available in Mining.R file -- run this code first 
+#Loading all the libraries needed for various data visualization:
+
+x <- c("tidyverse", "tidytext", "purrr", "twitteR", "ROAuth", "devtools", 
+       "stringr", "RColorBrewer", "wordcloud", "gridExtra", "tm", 
+       "sp", "RgoogleMaps", "ggmap", "maptools", "tigris", "leaflet", 
+       "webshot", "RCurl", "reshape2", "scales", "kableExtra", "knitr");
+
+lapply(x, library, character.only = TRUE);
+
+#Load data saved by Mining.R
+load('alltweets.RData')
+load('badtweet.RData')
+load('goodtweet.RData')
+load('neutraltweet.RData')
+load('teaminfo.RData')
+load('teamsentiments.RData')
+load('sentimentdesign.RData')
+```
+#Introduction
+Social media usage has infiltrated most aspects of everyday life. Most people have one, if not more, social media accounts, and use these social networks, in some capacity, each and every day. In fact, Statista estimates that there are 2.46 billion social media users, and Twitter has an average of 330 million monthly users. Tweets, previously limited to only 140 characters, can reveal a lot about an individual, and their perceptions of current events, brands, and other aspects of daily life, which are becoming increasingly public. 
+
+
+##Why Hockey?
+When presented with this project, the idea of evaluating the widespread perceptions of brands seemed dull. However, the night after the project was assigned, I found myself lurking Twitter for updates regarding upcoming trades by my favorite NHL teams. I realized that each of the 31 NHL teams all Tweeted using a hashtag specific to their team. Whenever someone uses one of these specific hashtags, it appears with the team logo next to it. Ultimately, I decided that I could use Twitter to analyze the perceptions of each team, and possibly use Twitter data to predict how well or how poorly a team was doing at any given time. 
+
+![Various Team Hashtags](Presentation-figure/hastags.png){width=50%}
+
+  
+##The NHL and Twitter
+
+After looking at each individual teams Twitter feed, I realized that each team had their own specific way of interacting with fans. For example, the Vegas Golden Knights Twitter is full of sarcastic jokes, humor, and memes (Figure 2). I also noted that teams that were doing worse in terms of overall ranking in their division, seemed to publish Tweets that were less enthusiastic than teams that were doing better. As one would assume, teams who Tweeted more often and engaged more frequently with fans had a higher number of followers, and a higher rate of use of their team-specific hashtag. I also noticed that most of the Tweets using the team-specific hashtag that were not published by the team themselves, were most often used by fans of the team. Thus, each Tweet had a very straight forward, unfiltered perception of the team. As I was reading Tweets from my peronally favorite team, the Chicago Blackhawks, I noticed that many people had optimistic and positive reactions to an increase in goals scored over the last few games, but following a miserable loss, the Tweets reflected the sentiment. Table 1 shows the name of each team, their corresponding hashtag, follower count (rounded to the nearest thousand), and the division they are in.
+
+
+![Vegas Golden Knights Twitter](Presentation-figure/vegas2.png){width=70%}
+
+
+\newpage
+
+
+\begin{table}[h!]
+\centering
+\caption{NHL Twitter Presence}
+
+\label{tab:NHLTeamsTwitter}
+\begin{tabular}{||l|l|l|l||}
+\hline
+\bf{Teamname} & \bf{Official Hashtag} & \bf{\# Followers} & \bf{Division} \\
+\hline \hline
+Anaheim Ducks  & \#LetsGoDucks   &   556,000  & Pacific      \\
+\hline 
+Arizona Coyotes & \#Yotes  &   329,000 & Pacific  \\
+\hline
+Boston Bruins & \#NHLBruins  &  1,340,000  & Atlantic     \\
+\hline
+Buffalo Sabres & \#Sabres  &   638,000 & Atlantic    \\
+\hline
+Calgary Flames & \#CofRed &   584,000 &  Pacific    \\
+\hline
+Carolina Hurricanes & \#Redvolution  &    335,000   & Metropolitan   \\
+\hline
+Chicago Blackhawks & \#Blackhawks  &    2,450,000  & Central    \\
+\hline
+Colorado Avalanche & \#GoAvsGo &    423,000 & Central   \\
+\hline
+Columbus Blue Jackets & \#CBJ  &    418,000   & Metropolitan  \\
+\hline
+Dallas Stars & \#GoStars  &    932,000 & Central    \\
+\hline
+Detroit Red Wings & \#LGRW  &    1,210,000  & Atlantic   \\
+\hline
+Edmonton Oilers & \#LetsGoOilers   &    781,000  & Pacific   \\
+\hline
+Florida Panthers & \#FlaPanthers   &    340,000   & Atlantic  \\
+\hline
+Los Angeles Kings & \#LAKings  &    1,150,000  & Pacific   \\
+\hline
+Minnesota Wild & \#MNWild  &   649,000 & Central   \\
+\hline
+Montreal Canadiens & \#GoHabsGo &   1,500,000 &  Atlantic    \\
+\hline
+Nashville Predators & \#Preds  &   518,000  & Central     \\
+\hline
+New Jersey Devils & \#NJDevils  &  679,000  &  Metropolitan    \\
+\hline
+New York Islanders & \#Isles  &   477,000  & Metropolitan \\
+\hline
+New York Rangers & \#NYR  &     1,380,000  & Metropolitan  \\
+\hline
+Ottawa Senators & \#Sens  &   551,000 & Atlantic  \\
+\hline
+Philadelphia Flyers & \#LetsGoFlyers  &  1,430,000 &  Metropolitan      \\
+\hline
+Pittsburgh Penguins & \#LetsGoPens & 1,690,000 &  Metropolitan   \\
+\hline
+San Jose Sharks & \#SJSharks   &     774,000 & Pacific   \\
+\hline
+St. Louis Blues & \#AllTogetherNowSTL  &    633,000  & Central    \\
+\hline
+Tampa Bay Lightning & \#GoBolts  &   634,000 &  Atlantic     \\
+\hline
+Toronto Maple Leafs & \#TMLTalk  &   1,740,000 & Atlantic     \\
+\hline
+Vancouver Canucks & \#Canucks  &    1,020,000  & Pacific   \\
+\hline
+Vegas Golden Knights & \#VegasBorn  &   261,000 & Pacific    \\
+\hline
+Washington Capitals & \#ALLCAPS  &    667,000 & Metropolitan  \\
+\hline
+Winnipeg Jets & \#GoJetsGo &  492,000 & Central     \\
+\hline \hline
+
+\end{tabular}
+\end{table}
+
+```{r, echo = FALSE, warning = FALSE,  out.height="3in", out.width="0.8\\linewidth", fig.cap = "Scope of Twitter Reach"}
+TeamInfo$FollowersPerTweet = TeamInfo$Followers/TeamInfo$NumTweets
+
+ggplot(data = TeamInfo, aes(x= TeamNames, y=FollowersPerTweet, fill=TeamNames)) + 
+       geom_bar(stat="identity") +
+       theme(axis.text.x = element_text(angle = 70, hjust = 1),legend.position = "none") +
+       labs(title = "Scope: Followers Per Tweet", y = "Number of Followers Per Tweet", 
+            x = "Team Name")
+```
+#Mining the Tweets
+I collected 500 Tweets from each of the 31 team-specific hashtags, for a total of 15,500 Tweets, and filtered out all retweets in order to aovid unnecessary repetition of text. The Tweets were all collected from the period October 04 2017 (the official start of the NHL seasons), and December 15 2017. The Tweets were cleaned of all usernames, hyperlinks, punctuation, and unnecessary blank characters or emojis.  I found that the current standings of the teams, as opposed to performance early on in the season, was the best classification method. \
+
+In order to look at the difference in content between teams doing well, and teams doing poorly, I separated the 31 teams into three unique groups-- "good" teams, "bad" teams, and "neutral" teams. The good teams are comprised of the top two teams in each of the four divisions. The bad teams are comprised of the bottom two teams in each of the four divisions. Finally, the neutral teams are those that fall in the middle of their division. After the Tweets were separated into datasets following the below separation, using a dictionary of stopwords including traditional English stopwords, the search terms used in the initial data mining, and corresponding team and location namesnames, the Tweets were unnested into a data structure with each individual word. \
+
+\newpage
+
+##Team Classification
+"Good" Teams
+    \begin{multicols}{2}
+    \begin{itemize}
+        \item Tampa Bay Lightning
+        \item Nashville Predators
+        \item Los Angeles Kings
+        \item Toronto Maple Leafs
+        \item Columbus Blue Jackets
+        \item Vegas Golden Knights
+        \item  St. Louis Blues
+        \item Washington Capitals 
+    \end{itemize}
+    \end{multicols}
+
+"Bad" Teams
+    \begin{multicols}{2}
+    \begin{itemize}
+        \item Ottawa Senators
+        \item Buffalo Sabres
+        \item Philadelphia Flyers
+        \item Colorado Avalanche
+        \item Arizona Coyotes
+        \item Chicago Blackhawks
+        \item Edmonton Oilers
+        \item Carolina Hurricanes
+    \end{itemize}
+    \end{multicols}
+
+"Neutral" Teams
+    \begin{multicols}{2}
+    \begin{itemize}
+        \item Montreal Canadiens
+        \item Boston Bruins
+        \item Detroit Red Wings
+        \item New York Islanders
+        \item Pittsburgh Penguins 
+        \item Dallas Stars
+        \item Minnesota Wild
+        \item Vancouver Canucks
+        \item San Jose Sharks
+        \item Calgary Flames
+        \item Anaheim Ducks
+        \item New York Rangers
+        \item Florida Panthers
+    \end{itemize}
+    \end{multicols}
+
+
+
+##Visualizing Frequency of Terms
+Using the unnested data sets, I created wordclouds for both the good dataset and the bad dataset, which showed the frequency of word usage. Interestingly enough, one of the top used words by "Bad" teams was actually the word "win". \
+
+```{r, echo = FALSE, warning = FALSE, out.height="3in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Word Frequency for Good Teams"}
+
+myCorpus <- Corpus(VectorSource(GoodTweets$text))
+myStopwords <- myStopwords
+myCorpus <- tm_map(myCorpus, removeWords, myStopwords)
+myCorpusCopy <- myCorpus
+
+GoodTweetText <- GoodTweets$text
+
+Good.df <- data_frame(line=1:4000, text = GoodTweetText)
+Good.df <-  Good.df %>% unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words)
+
+
+
+Goodplot = 
+  Good.df %>%
+  count(word, sort = TRUE) %>%
+  top_n(20) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col(stat='identity', fill='darkseagreen2') +
+  xlab(NULL) +
+  ggtitle('"Good Teams" Word Count') +
+  coord_flip()
+
+
+afinnGOOD <- Good.df %>% 
+  inner_join(customsentiments)
+GoodSentimentScore <- sum(afinnGOOD$score)
+GOODAvg <-mean(afinnGOOD$score)
+
+
+tdm <- TermDocumentMatrix(myCorpus, control = list(wordLengths = c(1, Inf)))
+tdm <- as.matrix(tdm)
+
+# calculate the frequency of words and sort it by frequency
+word.freq <- sort(rowSums(tdm), decreasing = T)
+wordcloud(words = names(word.freq), freq = word.freq, min.freq = 20,
+random.order = F, scale = c(5, .2), colors = brewer.pal(10, "Dark2")) 
+
+```
+
+```{r, echo = FALSE, warning = FALSE, out.height="3in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Word Frequency for Bad Teams"}
+myCorpus2 <- Corpus(VectorSource(BadTweets$text))
+myStopwords <- myStopwords
+myCorpus2 <- tm_map(myCorpus2, removeWords, myStopwords)
+myCorpusCopy2 <- myCorpus2
+
+
+BadTweetText <- BadTweets$text
+
+Bad.df <- data_frame(line=1:4000, text = BadTweetText)
+
+Bad.df <-  Bad.df %>% unnest_tokens(word, text) %>%
+  anti_join(custom_stop_words)
+
+
+Badplot = 
+  Bad.df %>%
+  count(word, sort = TRUE) %>%
+  top_n(20) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col(fill='tomato2') +
+  xlab(NULL) +
+  ggtitle('"Bad Teams" Word Count') +
+  coord_flip()
+
+
+
+afinnBAD <- Bad.df %>% 
+  inner_join(customsentiments)
+BadSentimentScore<- sum(afinnBAD$score)
+BADAvg <- mean(afinnBAD$score)
+
+
+tdm2 <- TermDocumentMatrix(myCorpus2, control = list(wordLengths = c(1, Inf)))
+m2 <- as.matrix(tdm2)
+
+# calculate the frequency of words and sort it by frequency
+word.freq2 <- sort(rowSums(m2), decreasing = T)
+wordcloud(words = names(word.freq2), freq = word.freq2, min.freq = 20,
+random.order = F, scale = c(5, .2), colors = brewer.pal(10, "Dark2")) 
+```
+
+```{r, echo = FALSE, warning = FALSE, out.height="3in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Comparitive Word Counts"}
+grid.arrange(Goodplot, Badplot, ncol=2) 
+  
+```
+
+#Sentiment Analysis
+##Sentiment Scores of Words
+After looking at frequency of words used in Tweets related to good teams or bad teams, I used a custom sentiment dictionary which included a pre-built dictionary, using the afinn format, as well as my personal addition of hockey related terms, to score each of the words with a corresponding numeric value from -5 to 5. -5 corresponds to the terms which are seen as the most negative, while terms with a score of 5 are the most positive. It can be noted that there are no -5 scored words in the comparison cloud for good teams, but there is both -5 and 5 scored words for the bad teams. Analysis on a team by team basis can be seen in the corresponding Shiny application.
+```{r, echo = FALSE, warning = FALSE, out.height="3in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Comparison Cloud of Sentiment Scores for Good Teams"}
+
+Good.df %>% 
+  inner_join(customsentiments) %>%
+  count(word, score, sort=TRUE) %>%
+  acast(word~score, value.var = "n", fill =0) %>%
+  comparison.cloud(max.words = 200)
+```
+
+```{r, echo = FALSE, warning = FALSE, out.height="3in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Comparison Cloud of Sentiment Scores for Bad Teams"}
+
+Bad.df %>% 
+  inner_join(customsentiments) %>%
+  count(word, score, sort=TRUE) %>%
+  acast(word~score, value.var = "n", fill =0) %>%
+  comparison.cloud(max.words = 200)
+
+```
+
+
+##Team Name vs. Sentiment
+It can be seen in the corresponding chart that eacah team had a varying average sentiment score, calculated by the sum of the scores, divided by the total number of words. An outlier, as seen in the bar of the Columbus Blue Jackets is seen, as the average sentiment score is significantly lower than the other teams. While one would think that Columbus would have a high average sentiment do to their winning record this season, and being second in their division, the team has recently been plagued with numerous injuries affecting some of their more seasoned key players. Further evaluation of the sentiment analysis shows that there are many terms mentioning the orbital fracture sustained by forward Brandon Dubinsky in a fight last week, putting him on the injured list for the next six to eight weeks. After looking at the correlation between the number of points a team has (a sum of twice their number of wins plus the number of overtime losses), and their average sentiment score, there was only a correlation of 0.02510923. This indicates that there is no relationship between the two variables. However, interaction with other predictor variables, including the number of Twitter followers a team has, may prove valuable in model fitting in terms of prediction of points. A summary table of the average sentiments is found below. In order to evaluate team performance further, I employed the use of the weekly power ranking as released by ESPN. The power ranking takes into account improvement or decline within the last week, and has a 0.95 correlation to the number of points a team has, making it a good unbiased estimator of pervasive team performance.
+```{r, echo = FALSE, warning = FALSE, results = FALSE, out.height="3in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Comparison of Average Sentiment Scores by Team"}
+ggplot(data=TeamInfo, aes(x= TeamNames, y= avgSentimentScore, fill=TeamNames)) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 70, hjust = 1),legend.position = "none") +
+  geom_hline(aes(yintercept=mean(TeamInfo$avgSentimentScore))) +
+  labs(title = "Average Sentiment Score by Team", y = "Average Sentiment", x = "Team Name")
+
+cor(TeamInfo$Points, TeamInfo$avgSentimentScore)
+
+```
+
+```{r, echo = FALSE, warning = FALSE, out.height="3in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Scatterplot of correlation between average sentiment score and current number of points"}
+ggplot(data=TeamInfo, aes(x= Points, y=avgSentimentScore)) +
+  geom_point(aes(colour=TeamInfo$Division), size=3, show.legend = TRUE) +
+  labs(title = "Points vs. Sentiment Score", y = "Average Sentiment Score", x = "Current Number of Points") + 
+  scale_color_manual(values=c("royalblue4", "orchid2", "firebrick3", "turquoise"), name = "Division")
+
+```
+
+\begin{table}[h!]
+\centering
+\caption{NHL Team Rankings and Sentiments}
+\label{tab:variable_descript}
+\begin{tabular}{||l|c|c|c|c||}
+\hline
+\bf{Teamname} & \bf{Power Ranking} & \bf{Points} & \bf{Classifier} & \bf{Sentiment Score}\\
+\hline \hline
+Anaheim Ducks  & 19 & 35 & Neutral & 1.56896552       \\
+\hline 
+Arizona Coyotes &   31 & 19 & Bad &  1.34068627  \\
+\hline
+Boston Bruins &  16 & 34 & Neutral &  2.31043257     \\
+\hline
+Buffalo Sabres  & 30 & 22 & Bad &  1.10858586   \\
+\hline
+Calgary Flames  & 20 & 35 & Neutral &  1.30900243    \\
+\hline
+Carolina Hurricanes  & 23 & 31 & Bad  & 1.92111369  \\
+\hline
+Chicago Blackhawks  & 17 & 37 & Bad &  2.1111111   \\
+\hline
+Colorado Avalanche &  25 & 32 & Bad &  1.57881137   \\
+\hline
+Columbus Blue Jackets & 5 & 41 & Good &  0.09144543  \\
+\hline
+Dallas Stars  & 15 & 37 & Neutral &  2.07178218   \\
+\hline
+Detroit Red Wings  & 28 & 29 & Neutral &  0.78861789   \\
+\hline
+Edmonton Oilers  & 26 & 28 & Bad &  1.57772021    \\
+\hline
+Florida Panthers  & 27 & 29 & Neutral &  1.32250000  \\
+\hline
+Los Angeles Kings  & 6 & 43 & Good & 1.19128329   \\
+\hline
+Minnesota Wild &  12 & 37 & Neutral & 2.05206074    \\
+\hline
+Montreal Canadiens  & 24 & 32 & Neutral &1.49839228     \\
+\hline
+Nashville Predators  & 3 & 44 & Good &  1.62407862    \\
+\hline
+New Jersey Devils  & 9 & 39 & Neutral & 1.67796610     \\
+\hline
+New York Islanders  & 10 & 37 & Neutral &  0.52073733 \\
+\hline
+New York Rangers & 13 & 35 & Neutral &  1.77747253  \\
+\hline
+Ottawa Senators & 29 & 27 & Bad & 1.66727273   \\
+\hline
+Philadelphia Flyers  & 21 & 33 & Bad & 2.13255814      \\
+\hline
+Pittsburgh Penguins  & 18 & 35 & Neutral  & 0.81341108    \\
+\hline
+San Jose Sharks  & 14 & 37 & Neutral & 0.90641711  \\
+\hline
+St. Louis Blues  & 2 & 44 & Good & 1.40144231   \\
+\hline
+Tampa Bay Lightning  & 1 & 48 & Good & 1.59148936    \\
+\hline
+Toronto Maple Leafs & 7 & 41 & Good &  1.01219512    \\
+\hline
+Vancouver Canucks & 22 & 32 & Neutral & 0.50279330  \\
+\hline
+Vegas Golden Knights  & 11 & 42 & Good & 1.30548926    \\
+\hline
+Washington Capitals & 8 & 41 & Good & 1.61942257   \\
+\hline
+Winnipeg Jets & 4 & 41 & Neutral &  2.13669065      \\
+\hline \hline
+
+\end{tabular}
+\end{table}
+
+##Sentiment vs. Average Length of Characters
+After evaluating some of the Tweets, I noticed that longer Tweets tended to be indicative of rather negative sentiments, often long rants regarding the playing style of a particular player. While the scatterplot indicates that there may be some evidence of a correlation, mathematical analysis concludes that there is a -0.1015794 correlation between the two, indicating a lack of significant relationship.
+```{r, echo = FALSE, warning = FALSE, results = FALSE, out.height="3in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Sentiment score compared to average length of Tweet"}
+ggplot(data=TeamInfo, aes(x= LengthofTweets, y=avgSentimentScore)) + 
+  geom_point(aes(colour=TeamInfo$TeamName), size=3, show.legend = FALSE) +
+  labs(title = "Average Length of Tweet vs. Sentiment Score", y = "Average Sentiment Score", x = "Average Length of Tweet")
+
+cor(TeamInfo$LengthofTweets, TeamInfo$avgSentimentScore);
+```
+
+#Mapping Sentiments
+In order to better visualize the distribution of sentiments from team to team, the following plots were created. These plots do a good job of demonstrating to what extent each team is associated with different sentiment scores. Figure 12 shows that the use of terms with sentiments of -5 are limited to only three teams, while most teams across the nation had a high proportion of terms with sentiments of -2 and -1. Additionally, Figure 15 demonstrates the large proportion of terms of sentiment 5, an encouraging sign for the overall tone of social media.
+
+```{r, echo = FALSE, warning = FALSE, out.height="4in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Frequency of negative sentiments used for all teams"}
+AFINN <- rbind(Lightningafinn, Devilsafinn, Kingsafinn, Predsafinn, Leafsafinn, 
+     BlueJacketsafinn, Jetsafinn, GKafinn, Habsafinn, Bruinsafinn, RedWingsafinn, 
+     Sensafinn, Islandersafinn, Pensafinn, Bluesafinn, Starsafinn, Wildafinn, 
+     Canucksafinn, Sharksafinn, Flamesafinn, Ducksafinn, Rangersafinn, Capsafinn, 
+     Sabresafinn, Flyersafinn, Avalancheafinn, Coyotesafinn, Panthersafinn, Hawksafinn, 
+     Oilersafinn, Canesafinn)
+
+neg5 <- AFINN %>% filter(score== -5) 
+neg4 <- AFINN %>% filter(score== -4)
+neg3 <- AFINN %>% filter(score== -3)
+neg2 <- AFINN %>% filter(score== -2)
+neg1 <- AFINN %>% filter(score== -1)
+pos1 <- AFINN %>% filter(score== 1)
+pos2 <- AFINN %>% filter(score== 2)
+pos3 <- AFINN %>% filter(score== 3)
+pos4 <- AFINN %>% filter(score== 4)
+pos5 <- AFINN %>% filter(score== 5)
+
+neg <- rbind(neg5, neg4, neg3, neg2, neg1)
+pos <- rbind(pos1, pos2, pos3, pos4, pos5)
+
+posssss <- pos %>% count(latitude, longitude)
+
+neggg1 <- neg1 %>% count(latitude, longitude)
+neggg2 <- neg2 %>% count(latitude, longitude)
+neggg3 <- neg3 %>% count(latitude, longitude)
+neggg4 <- neg4 %>% count(latitude, longitude)
+neggg5 <- neg5 %>% count(latitude, longitude)
+
+posss1 <- pos1 %>% count(latitude, longitude)
+posss2 <- pos2 %>% count(latitude, longitude)
+posss3 <- pos3 %>% count(latitude, longitude)
+posss4 <- pos4 %>% count(latitude, longitude)
+posss5 <- pos5 %>% count(latitude, longitude)
+
+map <- get_googlemap(center = c(lon = -97.3439293, lat = 41.1873422), size = c(640, 500),
+zoom = 4, maptype = 'roadmap', color = 'bw')
+
+met <- get_googlemap(center = c(lon = -73.9655909, lat = 40.6853413), size = c(640, 500), 
+                      zoom = 10, maptype = 'roadmap', color = 'bw')
+
+socal <- get_googlemap(center = c(lon = -117.7769965, lat = 34.0565805), size = c(640, 640), 
+                      zoom = 9, maptype = 'roadmap', color = 'bw')
+
+ggmap(map) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-1", size = n),shape =1, alpha = 1, data = neggg1) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-2", size = n), shape =1, alpha = 1, data = neggg2) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-3", size = n), shape =1, alpha = 1, data = neggg3) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-4", size = n), shape =1, alpha = 1, data = neggg4) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-5", size = n), shape =1, alpha = 1, data = neggg5) +
+  scale_size(range = c(0,7), name = "Number of Words") +
+  scale_color_manual(values=c("dodgerblue4", "mediumspringgreen", "deeppink4", "lightslateblue", "grey0"), name = "Sentiment Rating") +
+  labs(title='Distribution of Negative Sentiments', x = "Longitude", y = "Latitude")
+
+```
+
+```{r, echo = FALSE, warning = FALSE, out.height="4in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Frequency of negative sentiments used for all teams: zoom on tri-city area"}
+
+
+ggmap(met) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-1", size = n),shape =1, alpha = 1, data = neggg1) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-2", size = n), shape =1, alpha = 1, data = neggg2) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-3", size = n), shape =1, alpha = 1, data = neggg3) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-4", size = n), shape =1, alpha = 1, data = neggg4) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-5", size = n), shape =1, alpha = 1, data = neggg5) +
+  scale_size(range = c(0,20), name = "Number of Words") +
+  scale_color_manual(values=c("dodgerblue4", "mediumspringgreen", "deeppink4", "lightslateblue", "grey0"), name = "Sentiment Rating") +
+  labs(title='Distribution of Negative Sentiments in Tri-City Area', x = "Longitude", y = "Latitude")
+```
+
+```{r, echo = FALSE, warning = FALSE, out.height="4in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Frequency of negative sentiments used for all teams: zoom on Southern California"}
+ggmap(socal) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-1", size = n),shape =1, alpha = 1, data = neggg1) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-2", size = n), shape =1, alpha = 1, data = neggg2) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-3", size = n), shape =1, alpha = 1, data = neggg3) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-4", size = n), shape =1, alpha = 1, data = neggg4) +
+  geom_point(aes(x = longitude, y = latitude, colour = "-5", size = n), shape =1, alpha = 1, data = neggg5) +
+  scale_size(range = c(0,20), name = "Number of Words") +
+  scale_color_manual(values=c("dodgerblue4", "mediumspringgreen", "deeppink4", "lightslateblue", "grey0"), name = "Sentiment Rating") +
+  labs(title='Distribution of Negative Sentiments in Southern California', x = "Longitude", y = "Latitude")
+
+```
+
+
+```{r, echo = FALSE, warning = FALSE, out.height="4in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Frequency of positive sentiments used for all teams"}
+
+ggmap(map) +
+  geom_point(aes(x = longitude, y = latitude, colour = "1", size = n), shape =1, data = posss1) +
+  geom_point(aes(x = longitude, y = latitude, colour = "2", size = n), shape =1, data = posss2) +
+  geom_point(aes(x = longitude, y = latitude, colour = "3", size = n), shape =1, data = posss3) +
+  geom_point(aes(x = longitude, y = latitude, colour = "4", size = n), shape =1,  data = posss4) +
+  geom_point(aes(x = longitude, y = latitude, colour = "5", size = n), shape =1, data = posss5) +
+  scale_size(range = c(0,7), name = "Number of Words") +
+  scale_color_manual(values=c("darkturquoise", "mediumblue", "purple3", "hotpink", "firebrick"), name = "Sentiment Rating") + 
+  labs(title='Distribution of Positive Sentiments', x = "Longitude", y = "Latitude")
+                                                                             
+
+ 
+```
+
+```{r, echo = FALSE, warning = FALSE, out.height="4in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Frequency of positive sentiments used for all teams: zoom on tri-city area"}
+ggmap(met) +
+  geom_point(aes(x = longitude, y = latitude, colour = "1", size = n), shape =1, data = posss1) +
+  geom_point(aes(x = longitude, y = latitude, colour = "2", size = n), shape =1, data = posss2) +
+  geom_point(aes(x = longitude, y = latitude, colour = "3", size = n), shape =1, data = posss3) +
+  geom_point(aes(x = longitude, y = latitude, colour = "4", size = n), shape =1,  data = posss4) +
+  geom_point(aes(x = longitude, y = latitude, colour = "5", size = n), shape =1, data = posss5) +
+  scale_size(range = c(0,20), name = "Number of Words") +
+  scale_color_manual(values=c("darkturquoise", "mediumblue", "purple3", "hotpink", "firebrick"), name = "Sentiment Rating") + 
+  labs(title='Distribution of Positive Sentiments in the Tri-City Area', x = "Longitude", y = "Latitude")
+```
+
+
+```{r, echo = FALSE, warning = FALSE, out.height="4in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Frequency of positive sentiments used for all teams: zoom on Southern California"}
+ggmap(socal) +
+  geom_point(aes(x = longitude, y = latitude, colour = "1", size = n), shape =1, data = posss1) +
+  geom_point(aes(x = longitude, y = latitude, colour = "2", size = n), shape =1, data = posss2) +
+  geom_point(aes(x = longitude, y = latitude, colour = "3", size = n), shape =1, data = posss3) +
+  geom_point(aes(x = longitude, y = latitude, colour = "4", size = n), shape =1,  data = posss4) +
+  geom_point(aes(x = longitude, y = latitude, colour = "5", size = n), shape =1, data = posss5) +
+  scale_size(range = c(0,20), name = "Number of Words") +
+  scale_color_manual(values=c("darkturquoise", "mediumblue", "purple3", "hotpink", "firebrick"), name = "Sentiment Rating") + 
+  labs(title='Distribution of Positive Sentiments in Southern California', x = "Longitude", y = "Latitude")
+```
+
+#Linear Model Creation
+
+After running diagnostic plots on the predictor variables, I settled on the following OLS model. \
+
+\begin{equation}
+\begin{split}
+\texttt{Points} = \beta_0 + \beta_1(\texttt{avgSentimentScore * totalSentiment Score}) + \\
+\beta_2(\texttt{log(FollowersPerTweet)}) + \beta_3(\texttt{LengthofTweets}) +\\
+\beta_4(\texttt{Division}) + e
+\end{split}
+\end{equation}
+
+I used the Good and Bad teams together to create the model. I then assessed the predictive ability of the model in terms of the Neutral dataset. While some of the residuals are fairly large, they all appear to be randomly distributed. Further tweaking of the model may increase the quality of fit. This was not the case when attempting to predict the Good or Bad data based off the Neutral data, or using only the Good or Bad data to predict the Neutral data. As expected, creating a model based off only the Good data tended to overestimate while the Bad data tended to underestimate.  
+
+```{r, echo = FALSE, warning = FALSE, out.height="4in", out.width="0.8\\linewidth", message = FALSE, fig.cap = "Residual analysis of predictive power of formulated model"}
+
+TeamInfo$FollowersPerTweet = TeamInfo$Followers/TeamInfo$NumTweets
+TeamInfo$FollowersPerTweet = log(TeamInfo$FollowersPerTweet)
+GoodandBad <- TeamInfo %>% filter(Classifier != 'N')
+Neutral <- TeamInfo %>% filter(Classifier == 'N')
+
+linearmodel <- lm(Points ~ avgSentimentScore*totalSentimentScore + log(FollowersPerTweet) +
+                    LengthofTweets + as.factor(Division), data = GoodandBad)
+
+prediction <- predict(linearmodel, Neutral)
+
+actualvalues <- Neutral$Points
+resid <- prediction - actualvalues
+plot(actualvalues, resid, abline(0,0, col = "red"), ylab = 'Residuals', xlab= 'Fitted Values')
+
+
+```
+
+
+#Conclusion
+Ultimately, it turns out that due to the variability in a teams performance from game to game, and even period to period of play, sentiment analysis was not indicative of typical measures of team performance. This season may also be an outlier in terms of predictive power due to the large gap between teams within the four divisions. A point differential as extreme as the one observed between Pacific first place team, LA Kings, and Pacific last place team, Arizona Coyotes, is not typically seen, especially when the season is not even half way over. Further creation of  predictive model would benefit from use of multiple seasons of data, or collection and analysis of more Tweets.
